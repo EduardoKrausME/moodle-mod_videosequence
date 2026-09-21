@@ -1,0 +1,208 @@
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * player.js
+ *
+ * @package   mod_videosequence
+ * @copyright 2026 Eduardo Kraus {@link https://eduardokraus.com}
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+import Ajax from 'core/ajax';
+
+const sendProgress = async (config, state, previous, current, duration, elapsed) => {
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(current)) {
+        return;
+    }
+    const start = Math.max(0, Math.min(previous, current));
+    const end = Math.max(start, current);
+    try {
+        const result = await Ajax.call([{
+            methodname: 'mod_videosequence_update_progress', args: {
+                cmid: config.cmid, current, duration, segmentstart: start, segmentend: end, elapsed,
+            }
+        }])[0];
+        const label = document.getElementById('videosequence-percent');
+        const bar = document.getElementById('videosequence-progressbar');
+        if (label) {
+            label.textContent = Number(result.percent).toFixed(1) + '%';
+        }
+        if (bar) {
+            bar.style.width = Math.min(100, Number(result.percent)) + '%';
+        }
+        config.lastposition = Number(result.lastposition) || config.lastposition;
+        document.dispatchEvent(new CustomEvent('videosequence:progress', {detail: result}));
+    } catch (error) {
+        // Tracking is retried on the next heartbeat; do not interrupt playback.
+    }
+};
+
+const initHtml5 = (config, video) => {
+    let last = 0;
+    let lastWall = Date.now();
+    let playing = false;
+    video.addEventListener('loadedmetadata', () => {
+        if (config.resume && Number(config.lastposition) > 0 && Number(config.lastposition) < video.duration - 2) {
+            video.currentTime = Number(config.lastposition);
+        }
+        last = video.currentTime || 0;
+    });
+    video.addEventListener('play', () => {
+        playing = true;
+        last = video.currentTime;
+        lastWall = Date.now();
+    });
+    const heartbeat = () => {
+        if (!playing) {
+            return;
+        }
+        const now = Date.now();
+        const current = video.currentTime || 0;
+        const elapsed = Math.max(0, Math.min(30, (now - lastWall) / 1000));
+        sendProgress(config, 'playing', last, current, video.duration || 0, elapsed);
+        last = current;
+        lastWall = now;
+    };
+    const timer = window.setInterval(heartbeat, 5000);
+    video.addEventListener('pause', () => {
+        if (playing) {
+            heartbeat();
+        }
+        playing = false;
+    });
+    video.addEventListener('ended', () => {
+        heartbeat();
+        playing = false;
+    });
+    window.addEventListener('pagehide', () => {
+        heartbeat();
+        window.clearInterval(timer);
+    });
+    document.addEventListener('videosequence:seek', (event) => {
+        if (config.allowseek || Number(event.detail.time) <= Number(config.lastposition) + 2) {
+            video.currentTime = Number(event.detail.time);
+            video.play();
+        }
+    });
+};
+
+const loadScript = (src) => new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src="' + src + '"]');
+    if (existing) {
+        existing.addEventListener('load', resolve, {once: true});
+        if (existing.dataset.loaded) {
+            resolve();
+        }
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+        script.dataset.loaded = '1';
+        resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+});
+
+const initYoutube = async (config, iframe) => {
+    if (!window.YT || !window.YT.Player) {
+        const ready = new Promise((resolve) => {
+            const old = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = () => {
+                if (old) {
+                    old();
+                }
+                resolve();
+            };
+        });
+        await loadScript('https://www.youtube.com/iframe_api');
+        await ready;
+    }
+    let last = Number(config.lastposition) || 0;
+    let lastWall = Date.now();
+    let timer = null;
+    const player = new window.YT.Player(iframe, {
+        events: {
+            onReady: () => {
+                if (config.resume && last > 0) {
+                    player.seekTo(last, true);
+                }
+            }, onStateChange: (event) => {
+                if (event.data === window.YT.PlayerState.PLAYING) {
+                    last = player.getCurrentTime();
+                    lastWall = Date.now();
+                    if (!timer) {
+                        timer = window.setInterval(() => {
+                            const now = Date.now();
+                            const current = player.getCurrentTime();
+                            sendProgress(config, 'playing', last, current, player.getDuration(), (now - lastWall) / 1000);
+                            last = current;
+                            lastWall = now;
+                        }, 5000);
+                    }
+                }
+            }
+        }
+    });
+    document.addEventListener('videosequence:seek', (event) => {
+        if (config.allowseek || Number(event.detail.time) <= Number(config.lastposition) + 2) {
+            player.seekTo(Number(event.detail.time), true);
+            player.playVideo();
+        }
+    });
+};
+
+const initVimeo = async (config, iframe) => {
+    await loadScript('https://player.vimeo.com/api/player.js');
+    const player = new window.Vimeo.Player(iframe);
+    let last = Number(config.lastposition) || 0;
+    let lastWall = Date.now();
+    if (config.resume && last > 0) {
+        player.setCurrentTime(last).catch(() => {
+        });
+    }
+    player.on('timeupdate', (data) => {
+        const now = Date.now();
+        if (now - lastWall < 4500) {
+            return;
+        }
+        sendProgress(config, 'playing', last, data.seconds, data.duration, (now - lastWall) / 1000);
+        last = data.seconds;
+        lastWall = now;
+    });
+    document.addEventListener('videosequence:seek', (event) => {
+        if (config.allowseek || Number(event.detail.time) <= Number(config.lastposition) + 2) {
+            player.setCurrentTime(Number(event.detail.time));
+            player.play();
+        }
+    });
+};
+
+export const init = (config) => {
+    const player = document.getElementById('videosequence-player');
+    if (!player) {
+        return;
+    }
+    if (config.source === 'upload' || config.source === 'url') {
+        initHtml5(config, player);
+    } else if (config.source === 'youtube') {
+        initYoutube(config, player);
+    } else if (config.source === 'vimeo') {
+        initVimeo(config, player);
+    }
+};

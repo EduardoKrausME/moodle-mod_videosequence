@@ -1,0 +1,122 @@
+{{!
+    This file is part of Moodle - https://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_videosequence/view
+
+    Example context (json):
+    {
+        Aqui tem que criar o context em inglês
+    }
+}}
+<div class="mod-videosequence" data-cmid="{{cmid}}" data-minwatch="{{minwatchpercent}}">
+    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+        <div><h2>{{name}}</h2>
+            <div>{{{intro}}}</div>
+        </div>
+        <div class="d-flex gap-2">
+            {{#canmanage}}<a class="btn btn-secondary" href="{{{manageurl}}}">{{#str}}
+                managesequence, videosequence{{/str}}</a>{{/canmanage}}
+            {{#canreport}}<a class="btn btn-secondary" href="{{{reporturl}}}">{{#str}}
+                report, videosequence{{/str}}</a>{{/canreport}}
+        </div>
+    </div>
+
+    <div class="videosequence-player-wrap mb-4">
+        {{#html5source}}
+            <video id="videosequence-player" class="w-100" controls preload="metadata" src="{{{videourl}}}"
+                   {{#posterurl}}poster="{{{posterurl}}}"{{/posterurl}}></video>
+        {{/html5source}}
+        {{#youtubesource}}
+            <div class="ratio ratio-16x9">
+                <iframe id="videosequence-player" src="{{{embedurl}}}"
+                        allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+            </div>
+        {{/youtubesource}}
+        {{#vimeosource}}
+            <div class="ratio ratio-16x9">
+                <iframe id="videosequence-player" src="{{{embedurl}}}" allow="autoplay; fullscreen; picture-in-picture"
+                        allowfullscreen></iframe>
+            </div>
+        {{/vimeosource}}
+    </div>
+
+    <div class="mb-4">
+        <div class="d-flex justify-content-between"><strong>{{#str}}watched, videosequence{{/str}}</strong><span
+                id="videosequence-percent">{{percent}}%</span></div>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{percent}}">
+            <div id="videosequence-progressbar" class="progress-bar" style="width: {{percent}}%"></div>
+        </div>
+        <small class="text-muted">{{#str}}answerunlocksat, videosequence, {{minwatchpercent}}{{/str}}</small>
+    </div>
+
+    {{#nosteps}}
+        <div class="alert alert-info">{{#str}}nostepsstudent, videosequence{{/str}}</div>
+    {{/nosteps}}
+
+    {{^nosteps}}
+        <section id="videosequence-answer" class="card"
+                 data-unlocked="{{#cananswer}}1{{/cananswer}}{{^cananswer}}0{{/cananswer}}">
+            <div class="card-body">
+                <h3>{{#str}}yoursequence, videosequence{{/str}}</h3>
+                <p class="text-muted">{{#str}}
+                    attemptstatus, videosequence, {{attempts}}{{/str}}{{^unlimited}}
+                    · {{#str}}remainingattempts, videosequence, {{remaining}}{{/str}}{{/unlimited}}</p>
+                <div id="videosequence-locked" class="alert alert-warning {{#cananswer}}d-none{{/cananswer}}">{{#str}}
+                    watchbeforeanswer, videosequence, {{minwatchpercent}}{{/str}}</div>
+
+                {{#reordermode}}
+                    <p>{{#str}}reorderinstructions, videosequence{{/str}}</p>
+                    <ol id="videosequence-sortable" class="list-group list-group-numbered mb-3">
+                        {{#steps}}
+                            <li class="list-group-item d-flex align-items-center gap-2 videosequence-step"
+                                draggable="true" data-stepid="{{id}}">
+                                <span class="videosequence-handle" aria-hidden="true">☰</span>
+                                <span class="flex-grow-1"><strong>{{title}}</strong>{{#description}}
+                                    <br><small>{{description}}</small>{{/description}}</span>
+                                {{#hasvideo}}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary videosequence-seek"
+                                            data-time="{{timestart}}">{{#str}}
+                                        reviewclip, videosequence{{/str}}</button>{{/hasvideo}}
+                                <button type="button" class="btn btn-sm btn-light videosequence-up"
+                                        aria-label="{{#str}}moveup{{/str}}">↑
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light videosequence-down"
+                                        aria-label="{{#str}}movedown{{/str}}">↓
+                                </button>
+                            </li>
+                        {{/steps}}
+                    </ol>
+                {{/reordermode}}
+
+                {{#createmode}}
+                    <p>{{#str}}createinstructions, videosequence{{/str}}</p>
+                    <div id="videosequence-created" class="mb-3">
+                        {{#blanksteps}}
+                            <div class="input-group mb-2"><span class="input-group-text">{{number}}</span><input
+                                    class="form-control videosequence-created-step" type="text" maxlength="255"
+                                    autocomplete="off"></div>
+                        {{/blanksteps}}
+                    </div>
+                {{/createmode}}
+
+                <button id="videosequence-submit" type="button" class="btn btn-primary"
+                        {{^cananswer}}disabled{{/cananswer}}>{{#str}}submitsequence, videosequence{{/str}}</button>
+                <div id="videosequence-feedback" class="mt-3" aria-live="polite"></div>
+            </div>
+        </section>
+    {{/nosteps}}
+</div>
