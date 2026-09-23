@@ -66,7 +66,7 @@ class progress_manager {
      * @return stdClass Return value.
      */
     public function update(stdClass $activity, stdClass $progress, float $current, float $duration,
-                           float    $segmentstart, float $segmentend, float $elapsed): stdClass {
+                           float $segmentstart, float $segmentend, float $elapsed): stdClass {
         global $DB;
         $duration = max(0.0, $duration);
         $current = max(0.0, min($duration, $current));
