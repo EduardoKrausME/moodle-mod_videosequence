@@ -7,11 +7,11 @@
 //
 // Moodle is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+// along with Moodle. If not, see <http://www.gnu.org/licenses/>.
 
 /**
  * sequence.js
@@ -21,129 +21,362 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-import Ajax from 'core/ajax';
-import Notification from 'core/notification';
+define(['core/ajax', 'core/notification'], function(Ajax, Notification) {
 
-const move = (item, direction) => {
-    const sibling = direction < 0 ? item.previousElementSibling : item.nextElementSibling;
-    if (!sibling) {
-        return;
-    }
-    if (direction < 0) {
-        item.parentNode.insertBefore(item, sibling);
-    } else {
-        item.parentNode.insertBefore(sibling, item);
-    }
-};
+    const move = (item, direction) => {
+        const sibling = direction < 0
+            ? item.previousElementSibling
+            : item.nextElementSibling;
 
-export const init = (config) => {
-    const root = document.querySelector('.mod-videosequence');
-    if (!root) {
-        return;
-    }
-    const sortable = document.getElementById('videosequence-sortable');
-    let dragged = null;
-    if (sortable) {
-        sortable.addEventListener('dragstart', (event) => {
-            dragged = event.target.closest('.videosequence-step');
-            if (dragged) {
-                event.dataTransfer.effectAllowed = 'move';
-            }
-        });
-        sortable.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            const target = event.target.closest('.videosequence-step');
-            if (dragged && target && target !== dragged) {
-                const rect = target.getBoundingClientRect();
-                sortable.insertBefore(dragged, event.clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
-            }
-        });
-        sortable.addEventListener('click', (event) => {
-            const item = event.target.closest('.videosequence-step');
-            if (!item) {
-                return;
-            }
-            if (event.target.closest('.videosequence-up')) {
-                move(item, -1);
-            }
-            if (event.target.closest('.videosequence-down')) {
-                move(item, 1);
-            }
-            const seek = event.target.closest('.videosequence-seek');
-            if (seek) {
-                document.dispatchEvent(new CustomEvent('videosequence:seek', {detail: {time: Number(seek.dataset.time)}}));
-            }
-        });
-    }
-
-    const unlock = (percent) => {
-        const allowed = Number(percent) + 0.001 >= Number(config.minwatch);
-        const button = document.getElementById('videosequence-submit');
-        const warning = document.getElementById('videosequence-locked');
-        if (button && allowed) {
-            button.disabled = false;
+        if (!sibling) {
+            return;
         }
-        if (warning && allowed) {
-            warning.classList.add('d-none');
+
+        if (direction < 0) {
+            item.parentNode.insertBefore(
+                item,
+                sibling
+            );
+        } else {
+            item.parentNode.insertBefore(
+                sibling,
+                item
+            );
         }
     };
-    document.addEventListener('videosequence:progress', (event) => unlock(event.detail.percent));
 
-    const button = document.getElementById('videosequence-submit');
-    if (!button) {
-        return;
-    }
-    button.addEventListener('click', async () => {
-        let answer = [];
-        if (Number(config.mode) === 0) {
-            answer = [...document.querySelectorAll('.videosequence-step')].map((item) => Number(item.dataset.stepid));
-        } else {
-            answer = [...document.querySelectorAll('.videosequence-created-step')].map((input) => input.value.trim());
-            if (answer.some((value) => value === '')) {
-                Notification.alert(M.util.get_string('incompleteanswer', 'videosequence'), M.util.get_string('fillallsteps', 'videosequence'));
-                return;
-            }
+    const init = config => {
+        const root = document.querySelector(
+            '.mod-videosequence'
+        );
+
+        if (!root) {
+            return;
         }
-        button.disabled = true;
-        try {
-            const request = Ajax.call([{
-                methodname: 'mod_videosequence_submit_attempt',
-                args: {cmid: config.cmid, answerjson: JSON.stringify(answer)}
-            }])[0];
-            const result = await request;
-            const target = document.getElementById('videosequence-feedback');
-            if (target) {
-                target.className = 'mt-3 alert ' + (result.feedbackavailable ? 'alert-info' : 'alert-success');
-                target.textContent = result.feedbackavailable
-                    ? M.util.get_string('attemptresult', 'videosequence', {
-                        attempt: result.attempt,
-                        correct: result.correct,
-                        total: result.total,
-                        score: result.score
-                    })
-                    : M.util.get_string('attemptsavedfeedbackhidden', 'videosequence', result.attempt);
+
+        const sortable = document.getElementById(
+            'videosequence-sortable'
+        );
+
+        let dragged = null;
+
+        if (sortable) {
+            sortable.addEventListener(
+                'dragstart',
+                event => {
+                    dragged = event.target.closest(
+                        '.videosequence-step'
+                    );
+
+                    if (dragged) {
+                        event.dataTransfer.effectAllowed =
+                            'move';
+                    }
+                }
+            );
+
+            sortable.addEventListener(
+                'dragover',
+                event => {
+                    event.preventDefault();
+
+                    const target =
+                        event.target.closest(
+                            '.videosequence-step'
+                        );
+
+                    if (
+                        dragged &&
+                        target &&
+                        target !== dragged
+                    ) {
+                        const rect =
+                            target.getBoundingClientRect();
+
+                        sortable.insertBefore(
+                            dragged,
+                            event.clientY <
+                            rect.top +
+                            rect.height / 2
+                                ? target
+                                : target.nextSibling
+                        );
+                    }
+                }
+            );
+
+            sortable.addEventListener(
+                'click',
+                event => {
+                    const item =
+                        event.target.closest(
+                            '.videosequence-step'
+                        );
+
+                    if (!item) {
+                        return;
+                    }
+
+                    if (
+                        event.target.closest(
+                            '.videosequence-up'
+                        )
+                    ) {
+                        move(item, -1);
+                    }
+
+                    if (
+                        event.target.closest(
+                            '.videosequence-down'
+                        )
+                    ) {
+                        move(item, 1);
+                    }
+
+                    const seek =
+                        event.target.closest(
+                            '.videosequence-seek'
+                        );
+
+                    if (seek) {
+                        document.dispatchEvent(
+                            new CustomEvent(
+                                'videosequence:seek',
+                                {
+                                    detail: {
+                                        time: Number(
+                                            seek.dataset.time
+                                        )
+                                    }
+                                }
+                            )
+                        );
+                    }
+                }
+            );
+        }
+
+        const unlock = percent => {
+            const allowed =
+                Number(percent) + 0.001 >=
+                Number(config.minwatch);
+
+            const button =
+                document.getElementById(
+                    'videosequence-submit'
+                );
+
+            const warning =
+                document.getElementById(
+                    'videosequence-locked'
+                );
+
+            if (button && allowed) {
+                button.disabled = false;
             }
-            document.querySelectorAll('.videosequence-step').forEach((item) => {
-                item.classList.remove('list-group-item-success', 'list-group-item-danger');
-            });
-            document.querySelectorAll('.videosequence-created-step').forEach((input) => {
-                input.classList.remove('is-valid', 'is-invalid');
-            });
-            if (result.feedbackavailable && Array.isArray(result.positionresults)) {
+
+            if (warning && allowed) {
+                warning.classList.add(
+                    'd-none'
+                );
+            }
+        };
+
+        document.addEventListener(
+            'videosequence:progress',
+            event => unlock(
+                event.detail.percent
+            )
+        );
+
+        const button =
+            document.getElementById(
+                'videosequence-submit'
+            );
+
+        if (!button) {
+            return;
+        }
+
+        button.addEventListener(
+            'click',
+            async() => {
+                let answer = [];
+
                 if (Number(config.mode) === 0) {
-                    [...document.querySelectorAll('.videosequence-step')].forEach((item, index) => {
-                        item.classList.add(result.positionresults[index] ? 'list-group-item-success' : 'list-group-item-danger');
-                    });
+                    answer = [
+                        ...document.querySelectorAll(
+                            '.videosequence-step'
+                        )
+                    ].map(
+                        item => Number(
+                            item.dataset.stepid
+                        )
+                    );
+
                 } else {
-                    [...document.querySelectorAll('.videosequence-created-step')].forEach((input, index) => {
-                        input.classList.add(result.positionresults[index] ? 'is-valid' : 'is-invalid');
+                    answer = [
+                        ...document.querySelectorAll(
+                            '.videosequence-created-step'
+                        )
+                    ].map(
+                        input =>
+                            input.value.trim()
+                    );
+
+                    if (
+                        answer.some(
+                            value => value === ''
+                        )
+                    ) {
+                        Notification.alert(
+                            M.util.get_string(
+                                'incompleteanswer',
+                                'videosequence'
+                            ),
+                            M.util.get_string(
+                                'fillallsteps',
+                                'videosequence'
+                            )
+                        );
+
+                        return;
+                    }
+                }
+
+                button.disabled = true;
+
+                try {
+                    const request = Ajax.call([{
+                        methodname:
+                            'mod_videosequence_submit_attempt',
+
+                        args: {
+                            cmid: config.cmid,
+                            answerjson:
+                                JSON.stringify(answer)
+                        }
+                    }])[0];
+
+                    const result =
+                        await request;
+
+                    const target =
+                        document.getElementById(
+                            'videosequence-feedback'
+                        );
+
+                    if (target) {
+                        target.className =
+                            'mt-3 alert ' +
+                            (
+                                result.feedbackavailable
+                                    ? 'alert-info'
+                                    : 'alert-success'
+                            );
+
+                        target.textContent =
+                            result.feedbackavailable
+                                ? M.util.get_string(
+                                    'attemptresult',
+                                    'videosequence',
+                                    {
+                                        attempt:
+                                        result.attempt,
+
+                                        correct:
+                                        result.correct,
+
+                                        total:
+                                        result.total,
+
+                                        score:
+                                        result.score
+                                    }
+                                )
+                                : M.util.get_string(
+                                    'attemptsavedfeedbackhidden',
+                                    'videosequence',
+                                    result.attempt
+                                );
+                    }
+
+                    document.querySelectorAll(
+                        '.videosequence-step'
+                    ).forEach(item => {
+                        item.classList.remove(
+                            'list-group-item-success',
+                            'list-group-item-danger'
+                        );
                     });
+
+                    document.querySelectorAll(
+                        '.videosequence-created-step'
+                    ).forEach(input => {
+                        input.classList.remove(
+                            'is-valid',
+                            'is-invalid'
+                        );
+                    });
+
+                    if (
+                        result.feedbackavailable &&
+                        Array.isArray(
+                            result.positionresults
+                        )
+                    ) {
+                        if (
+                            Number(config.mode) === 0
+                        ) {
+                            [
+                                ...document.querySelectorAll(
+                                    '.videosequence-step'
+                                )
+                            ].forEach(
+                                (item, index) => {
+                                    item.classList.add(
+                                        result.positionresults[
+                                            index
+                                            ]
+                                            ? 'list-group-item-success'
+                                            : 'list-group-item-danger'
+                                    );
+                                }
+                            );
+
+                        } else {
+                            [
+                                ...document.querySelectorAll(
+                                    '.videosequence-created-step'
+                                )
+                            ].forEach(
+                                (input, index) => {
+                                    input.classList.add(
+                                        result.positionresults[
+                                            index
+                                            ]
+                                            ? 'is-valid'
+                                            : 'is-invalid'
+                                    );
+                                }
+                            );
+                        }
+                    }
+
+                    button.disabled =
+                        !result.canretry;
+
+                } catch (error) {
+                    button.disabled = false;
+                    Notification.exception(
+                        error
+                    );
                 }
             }
-            button.disabled = !result.canretry;
-        } catch (error) {
-            button.disabled = false;
-            Notification.exception(error);
-        }
-    });
-};
+        );
+    };
+
+    return {
+        init: init
+    };
+});

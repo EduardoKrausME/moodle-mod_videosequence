@@ -22,6 +22,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use mod_videosequence\event\course_module_viewed;
+
 require_once('../../config.php');
 $id = required_param('id', PARAM_INT);
 $cm = get_coursemodule_from_id('videosequence', $id, 0, false, MUST_EXIST);
@@ -30,16 +32,20 @@ $activity = $DB->get_record('videosequence', ['id' => $cm->instance], '*', MUST_
 require_login($course, true, $cm);
 $context = context_module::instance($cm->id);
 require_capability('mod/videosequence:view', $context);
+
 $PAGE->set_url('/mod/videosequence/view.php', ['id' => $cm->id]);
 $PAGE->set_title(format_string($activity->name));
 $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($context);
-$event = \mod_videosequence\event\course_module_viewed::create(['objectid' => $activity->id, 'context' => $context]);
+
+$event = course_module_viewed::create(['objectid' => $activity->id, 'context' => $context]);
 $event->add_record_snapshot('course_modules', $cm);
 $event->add_record_snapshot('videosequence', $activity);
 $event->trigger();
+
 $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
+
 $steps = array_values($DB->get_records('videosequence_steps', ['videosequenceid' => $activity->id], 'position ASC'));
 $progress = $DB->get_record('videosequence_progress', ['videosequenceid' => $activity->id, 'userid' => $USER->id]);
 $progress = $progress ?: (object)['percent' => 0, 'lastposition' => 0];

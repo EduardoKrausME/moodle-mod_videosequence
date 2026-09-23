@@ -46,7 +46,7 @@ class mod_videosequence_mod_form extends moodleform_mod {
         $mform->addRule('name', null, 'required', null, 'client');
         $this->standard_intro_elements();
 
-        $mform->addElement('header', 'videoheader', get_string('videoheader', 'videosequence'));
+        $mform->addElement('html', '<h3>' . get_string('videoheader', 'videosequence') . '</h3>');
         $mform->addElement('select', 'videosource', get_string('videosource', 'videosequence'), [
             'upload' => get_string('sourceupload', 'videosequence'),
             'url' => get_string('sourceurl', 'videosequence'),
@@ -56,21 +56,21 @@ class mod_videosequence_mod_form extends moodleform_mod {
         $mform->setDefault('videosource', 'upload');
         $mform->setType('videosource', PARAM_ALPHA);
         $mform->addElement('filemanager', 'videofile', get_string('videofile', 'videosequence'), null, [
-            'subdirs' => 0, 'maxfiles' => 1, 'accepted_types' => ['video'],
+            'subdirs' => 0, 'accepted_types' => ['video'],
         ]);
         $mform->hideIf('videofile', 'videosource', 'neq', 'upload');
         $mform->addElement('url', 'videourl', get_string('videourl', 'videosequence'), ['size' => 80]);
         $mform->setType('videourl', PARAM_URL);
         $mform->hideIf('videourl', 'videosource', 'eq', 'upload');
         $mform->addElement('filemanager', 'poster', get_string('poster', 'videosequence'), null, [
-            'subdirs' => 0, 'maxfiles' => 1, 'accepted_types' => ['image'],
+            'subdirs' => 0, 'accepted_types' => ['image'],
         ]);
         $mform->addElement('selectyesno', 'resumeplayback', get_string('resumeplayback', 'videosequence'));
         $mform->setDefault('resumeplayback', 1);
         $mform->addElement('selectyesno', 'allowseek', get_string('allowseek', 'videosequence'));
         $mform->setDefault('allowseek', 1);
 
-        $mform->addElement('header', 'sequenceheader', get_string('sequenceheader', 'videosequence'));
+        $mform->addElement('html', '<h3>' . get_string('sequenceheader', 'videosequence') . '</h3>');
         $mform->addElement('select', 'sequencemode', get_string('sequencemode', 'videosequence'), [
             0 => get_string('modereorder', 'videosequence'),
             1 => get_string('modecreate', 'videosequence'),
@@ -88,7 +88,7 @@ class mod_videosequence_mod_form extends moodleform_mod {
             1 => get_string('feedbackimmediate', 'videosequence'),
             0 => get_string('feedbackfinal', 'videosequence'),
         ]);
-        $mform->addElement('text', 'grade', get_string('grade'), ['size' => 6]);
+        $mform->addElement('text', 'grade', get_string('grade', 'grades'), ['size' => 6]);
         $mform->setType('grade', PARAM_FLOAT);
         $mform->setDefault('grade', 100);
         $mform->addRule('grade', null, 'numeric', null, 'client');
@@ -136,6 +136,15 @@ class mod_videosequence_mod_form extends moodleform_mod {
         }
         if (($data['videosource'] ?? '') !== 'upload' && empty($data['videourl'])) {
             $errors['videourl'] = get_string('errorvideourl', 'videosequence');
+        }
+        foreach (['videofile', 'poster'] as $field) {
+            $draftid = (int)($data[$field] ?? 0);
+            if ($draftid > 0) {
+                $draftinfo = file_get_draft_area_info($draftid);
+                if ((int)$draftinfo['filecount'] > 1) {
+                    $errors[$field] = get_string('errormaxfiles', 'videosequence');
+                }
+            }
         }
         return $errors;
     }
