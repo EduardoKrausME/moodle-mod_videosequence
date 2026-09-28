@@ -26,8 +26,10 @@ namespace mod_videosequence\privacy;
 
 use core_privacy\local\metadata\collection;
 use core_privacy\local\request\approved_contextlist;
+use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
 use core_privacy\local\request\transform;
+use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 
 /**
@@ -35,6 +37,7 @@ use core_privacy\local\request\writer;
  */
 class provider implements
     \core_privacy\local\metadata\provider,
+    \core_privacy\local\request\core_userlist_provider,
     \core_privacy\local\request\plugin\provider {
     /**
      * Method get_metadata.
@@ -80,6 +83,38 @@ class provider implements
         $contextlist->add_from_sql($sql,
             ['contextlevel' => CONTEXT_MODULE, 'modname' => 'videosequence', 'userid1' => $userid, 'userid2' => $userid]);
         return $contextlist;
+    }
+
+    /**
+     * Get the list of users who have data within a context.
+     *
+     * @param userlist $userlist The userlist for the context.
+     * @return void
+     */
+    public static function get_users_in_context(userlist $userlist): void {
+        $context = $userlist->get_context();
+        if (!$context instanceof \context_module) {
+            return;
+        }
+
+        $params = [
+            'cmid' => $context->instanceid,
+            'modname' => 'videosequence',
+        ];
+
+        $sql = "SELECT p.userid
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+                  JOIN {videosequence_progress} p ON p.videosequenceid = cm.instance
+                 WHERE cm.id = :cmid";
+        $userlist->add_from_sql('userid', $sql, $params);
+
+        $sql = "SELECT a.userid
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+                  JOIN {videosequence_attempts} a ON a.videosequenceid = cm.instance
+                 WHERE cm.id = :cmid";
+        $userlist->add_from_sql('userid', $sql, $params);
     }
 
     /**
@@ -140,6 +175,38 @@ class provider implements
         }
         $DB->delete_records('videosequence_progress', ['videosequenceid' => $cm->instance]);
         $DB->delete_records('videosequence_attempts', ['videosequenceid' => $cm->instance]);
+    }
+
+    /**
+     * Delete data for multiple users within a single context.
+     *
+     * @param approved_userlist $userlist Approved users and context.
+     * @return void
+     */
+    public static function delete_data_for_users(approved_userlist $userlist): void {
+        global $DB;
+
+        $context = $userlist->get_context();
+        if (!$context instanceof \context_module) {
+            return;
+        }
+
+        $cm = get_coursemodule_from_id('videosequence', $context->instanceid, 0, false, IGNORE_MISSING);
+        if (!$cm) {
+            return;
+        }
+
+        $userids = $userlist->get_userids();
+        if (empty($userids)) {
+            return;
+        }
+
+        [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+        $select = 'videosequenceid = :videosequenceid AND userid ' . $usersql;
+        $params = ['videosequenceid' => $cm->instance] + $userparams;
+
+        $DB->delete_records_select('videosequence_progress', $select, $params);
+        $DB->delete_records_select('videosequence_attempts', $select, $params);
     }
 
     /**

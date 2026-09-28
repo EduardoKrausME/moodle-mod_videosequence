@@ -143,10 +143,19 @@ function mod_videosequence_pluginfile($course, $cm, $context, string $filearea, 
     }
     require_login($course, true, $cm);
     require_capability('mod/videosequence:view', $context);
+
+    if (empty($args)) {
+        return false;
+    }
+    $itemid = (int)array_shift($args);
+    if ($itemid !== 0 || empty($args)) {
+        return false;
+    }
+
     $filename = array_pop($args);
     $filepath = '/' . ($args ? implode('/', $args) . '/' : '');
     $fs = get_file_storage();
-    $file = $fs->get_file($context->id, 'mod_videosequence', $filearea, 0, $filepath, $filename);
+    $file = $fs->get_file($context->id, 'mod_videosequence', $filearea, $itemid, $filepath, $filename);
     if (!$file || $file->is_directory()) {
         return false;
     }

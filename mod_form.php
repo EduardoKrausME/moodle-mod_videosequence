@@ -88,7 +88,7 @@ class mod_videosequence_mod_form extends moodleform_mod {
             1 => get_string('feedbackimmediate', 'videosequence'),
             0 => get_string('feedbackfinal', 'videosequence'),
         ]);
-        $mform->addElement('text', 'grade', get_string('grade', 'grades'), ['size' => 6]);
+        $mform->addElement('text', 'grade', get_string('gradenoun'), ['size' => 6]);
         $mform->setType('grade', PARAM_FLOAT);
         $mform->setDefault('grade', 100);
         $mform->addRule('grade', null, 'numeric', null, 'client');
@@ -114,6 +114,29 @@ class mod_videosequence_mod_form extends moodleform_mod {
         $posterid = file_get_submitted_draft_itemid('poster');
         file_prepare_draft_area($posterid, $context->id, 'mod_videosequence', 'poster', 0, ['subdirs' => 0, 'maxfiles' => 1]);
         $defaultvalues['poster'] = $posterid;
+    }
+
+    /**
+     * Normalise custom completion checkboxes after form submission.
+     *
+     * This method is also used by the default and bulk completion forms, where
+     * Moodle appends a suffix to custom completion element names.
+     *
+     * @param stdClass $data Submitted form data.
+     * @return void
+     */
+    public function data_postprocessing($data): void {
+        parent::data_postprocessing($data);
+
+        if (!empty($data->completionunlocked)) {
+            $suffix = $this->get_suffix();
+            foreach (['completionwatch', 'completionsubmit'] as $field) {
+                $element = $field . $suffix;
+                if (empty($data->{$element})) {
+                    $data->{$element} = 0;
+                }
+            }
+        }
     }
 
     /**
@@ -156,11 +179,17 @@ class mod_videosequence_mod_form extends moodleform_mod {
      */
     public function add_completion_rules(): array {
         $mform = $this->_form;
-        $mform->addElement('checkbox', 'completionwatch', '', get_string('completionwatch', 'videosequence'));
-        $mform->setDefault('completionwatch', 1);
-        $mform->addElement('checkbox', 'completionsubmit', '', get_string('completionsubmit', 'videosequence'));
-        $mform->setDefault('completionsubmit', 1);
-        return ['completionwatch', 'completionsubmit'];
+        $suffix = $this->get_suffix();
+
+        $completionwatchel = 'completionwatch' . $suffix;
+        $mform->addElement('checkbox', $completionwatchel, '', get_string('completionwatch', 'videosequence'));
+        $mform->setDefault($completionwatchel, 1);
+
+        $completionsubmitel = 'completionsubmit' . $suffix;
+        $mform->addElement('checkbox', $completionsubmitel, '', get_string('completionsubmit', 'videosequence'));
+        $mform->setDefault($completionsubmitel, 1);
+
+        return [$completionwatchel, $completionsubmitel];
     }
 
     /**
@@ -170,6 +199,7 @@ class mod_videosequence_mod_form extends moodleform_mod {
      * @return bool Return value.
      */
     public function completion_rule_enabled($data): bool {
-        return !empty($data['completionwatch']) || !empty($data['completionsubmit']);
+        $suffix = $this->get_suffix();
+        return !empty($data['completionwatch' . $suffix]) || !empty($data['completionsubmit' . $suffix]);
     }
 }

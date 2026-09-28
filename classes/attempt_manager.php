@@ -24,6 +24,7 @@
 
 namespace mod_videosequence;
 
+use core_text;
 use moodle_exception;
 use stdClass;
 
