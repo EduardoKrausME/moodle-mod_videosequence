@@ -23,8 +23,8 @@
  */
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->component = 'mod_videosequence';
 $plugin->version = 2026100500;
-$plugin->release = '1.0.5';
+$plugin->release = '1.0.6';
+$plugin->component = 'mod_videosequence';
 $plugin->requires = 2024042200;
 $plugin->maturity = MATURITY_STABLE;
