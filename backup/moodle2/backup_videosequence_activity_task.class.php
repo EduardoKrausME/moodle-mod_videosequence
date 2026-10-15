@@ -22,6 +22,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+require_once(__DIR__ . '/backup_videosequence_stepslib.php');
+
 /**
  * Backup task for Video Sequence.
  */

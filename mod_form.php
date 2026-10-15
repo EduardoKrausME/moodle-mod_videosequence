@@ -88,7 +88,7 @@ class mod_videosequence_mod_form extends moodleform_mod {
             1 => get_string('feedbackimmediate', 'videosequence'),
             0 => get_string('feedbackfinal', 'videosequence'),
         ]);
-        $mform->addElement('text', 'grade', get_string('gradenoun'), ['size' => 6]);
+        $mform->addElement('text', 'grade', get_string('maximumgrade', 'videosequence'), ['size' => 6]);
         $mform->setType('grade', PARAM_FLOAT);
         $mform->setDefault('grade', 100);
         $mform->addRule('grade', null, 'numeric', null, 'client');

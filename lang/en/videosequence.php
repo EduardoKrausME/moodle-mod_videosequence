@@ -58,6 +58,7 @@ $string['invalidanswer'] = 'The submitted sequence is invalid.';
 $string['managesequence'] = 'Manage sequence';
 $string['maxattempts'] = 'Maximum attempts';
 $string['maxattempts_help'] = 'Use 0 for unlimited attempts.';
+$string['maximumgrade'] = 'Maximum grade';
 $string['minwatchpercent'] = 'Minimum watched percentage before answering';
 $string['modecreate'] = 'Create the sequence from memory';
 $string['modereorder'] = 'Reorder the provided steps';

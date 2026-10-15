@@ -56,6 +56,7 @@ $string['invalidanswer'] = 'A sequência enviada é inválida.';
 $string['managesequence'] = 'Gerenciar sequência';
 $string['maxattempts'] = 'Máximo de tentativas';
 $string['maxattempts_help'] = 'Use 0 para tentativas ilimitadas.';
+$string['maximumgrade'] = 'Nota máxima';
 $string['minwatchpercent'] = 'Percentual mínimo assistido antes de responder';
 $string['modecreate'] = 'Criar a sequência de memória';
 $string['modereorder'] = 'Reordenar as etapas fornecidas';
