@@ -24,7 +24,6 @@
 
 namespace mod_videosequence;
 
-use core_text;
 use moodle_exception;
 use stdClass;
 
@@ -123,7 +122,7 @@ class attempt_manager {
      */
     private function matches_step(string $value, stdClass $step): bool {
         $normalize = static function (string $text): string {
-            $text = core_text::strtolower(trim($text));
+            $text = strtolower(trim($text));
             $text = preg_replace('/\\s+/u', ' ', $text);
             return $text ?? '';
         };
